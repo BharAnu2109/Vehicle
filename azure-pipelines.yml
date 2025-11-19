@@ -1,0 +1,163 @@
+# Azure Pipeline for Vehicle Manufacturing Application
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  MAVEN_CACHE_FOLDER: $(Pipeline.Workspace)/.m2/repository
+  MAVEN_OPTS: '-Dmaven.repo.local=$(MAVEN_CACHE_FOLDER)'
+
+stages:
+  - stage: Build
+    displayName: 'Build Stage'
+    jobs:
+      - job: BuildBackend
+        displayName: 'Build Backend Services'
+        steps:
+          - task: Maven@3
+            displayName: 'Maven Build'
+            inputs:
+              mavenPomFile: 'backend/pom.xml'
+              goals: 'clean package'
+              options: '-DskipTests'
+              publishJUnitResults: false
+              javaHomeOption: 'JDKVersion'
+              jdkVersionOption: '1.17'
+              mavenVersionOption: 'Default'
+              
+          - task: CopyFiles@2
+            displayName: 'Copy Backend Artifacts'
+            inputs:
+              SourceFolder: 'backend'
+              Contents: '**/target/*.jar'
+              TargetFolder: '$(Build.ArtifactStagingDirectory)/backend'
+              
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Backend Artifacts'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)/backend'
+              ArtifactName: 'backend'
+
+      - job: BuildAngular
+        displayName: 'Build Angular Admin'
+        steps:
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: '20.x'
+              
+          - script: |
+              cd angular-admin
+              npm install
+              npm run build --prod
+            displayName: 'Build Angular Application'
+            
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Angular Artifacts'
+            inputs:
+              PathtoPublish: 'angular-admin/dist'
+              ArtifactName: 'angular'
+
+      - job: BuildReact
+        displayName: 'Build React Portal'
+        steps:
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: '20.x'
+              
+          - script: |
+              cd react-customer-portal
+              npm install
+              npm run build
+            displayName: 'Build React Application'
+            
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish React Artifacts'
+            inputs:
+              PathtoPublish: 'react-customer-portal/build'
+              ArtifactName: 'react'
+
+      - job: BuildVue
+        displayName: 'Build Vue Dashboard'
+        steps:
+          - task: NodeTool@0
+            displayName: 'Install Node.js'
+            inputs:
+              versionSpec: '20.x'
+              
+          - script: |
+              cd vue-manufacturing-dashboard
+              npm install
+              npm run build
+            displayName: 'Build Vue Application'
+            
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Vue Artifacts'
+            inputs:
+              PathtoPublish: 'vue-manufacturing-dashboard/dist'
+              ArtifactName: 'vue'
+
+  - stage: Test
+    displayName: 'Test Stage'
+    dependsOn: Build
+    jobs:
+      - job: TestBackend
+        displayName: 'Test Backend Services'
+        steps:
+          - task: Maven@3
+            displayName: 'Run Tests'
+            inputs:
+              mavenPomFile: 'backend/pom.xml'
+              goals: 'test'
+              publishJUnitResults: true
+              testResultsFiles: '**/surefire-reports/TEST-*.xml'
+              javaHomeOption: 'JDKVersion'
+              jdkVersionOption: '1.17'
+
+  - stage: DockerBuild
+    displayName: 'Docker Build Stage'
+    dependsOn: Test
+    condition: succeeded()
+    jobs:
+      - job: BuildDockerImages
+        displayName: 'Build and Push Docker Images'
+        steps:
+          - task: Docker@2
+            displayName: 'Build and Push Docker Images'
+            inputs:
+              containerRegistry: 'ACR_CONNECTION'
+              repository: 'vehicle-manufacturing'
+              command: 'buildAndPush'
+              Dockerfile: '**/Dockerfile'
+              tags: |
+                $(Build.BuildId)
+                latest
+
+  - stage: Deploy
+    displayName: 'Deploy to Azure'
+    dependsOn: DockerBuild
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployToAKS
+        displayName: 'Deploy to AKS'
+        environment: 'production'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: KubernetesManifest@0
+                  displayName: 'Deploy to Kubernetes'
+                  inputs:
+                    action: 'deploy'
+                    kubernetesServiceConnection: 'AKS_CONNECTION'
+                    namespace: 'vehicle-manufacturing'
+                    manifests: |
+                      kubernetes/deployment.yml
+                      kubernetes/service.yml
