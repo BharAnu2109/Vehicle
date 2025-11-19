@@ -1,0 +1,12 @@
+<nav class="navbar">
+  <h1>{{ title }}</h1>
+  <ul>
+    <li><a routerLink="/dashboard" routerLinkActive="active">Dashboard</a></li>
+    <li><a routerLink="/vehicles" routerLinkActive="active">Vehicles</a></li>
+    <li><a routerLink="/manufacturing" routerLinkActive="active">Manufacturing</a></li>
+  </ul>
+</nav>
+
+<div class="container">
+  <router-outlet></router-outlet>
+</div>

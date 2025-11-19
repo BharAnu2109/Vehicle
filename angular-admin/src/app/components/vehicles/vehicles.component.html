@@ -1,0 +1,78 @@
+<div class="vehicles-container">
+  <h2>Vehicle Management</h2>
+
+  <!-- Create New Vehicle Form -->
+  <div class="form-section">
+    <h3>Create New Vehicle</h3>
+    <form (ngSubmit)="createVehicle()">
+      <div class="form-grid">
+        <input [(ngModel)]="newVehicle.vin" name="vin" placeholder="VIN" required>
+        <input [(ngModel)]="newVehicle.make" name="make" placeholder="Make" required>
+        <input [(ngModel)]="newVehicle.model" name="model" placeholder="Model" required>
+        <input [(ngModel)]="newVehicle.year" name="year" type="number" placeholder="Year" required>
+        <input [(ngModel)]="newVehicle.color" name="color" placeholder="Color" required>
+        <input [(ngModel)]="newVehicle.type" name="type" placeholder="Type" required>
+        <input [(ngModel)]="newVehicle.engineType" name="engineType" placeholder="Engine Type">
+        <input [(ngModel)]="newVehicle.transmission" name="transmission" placeholder="Transmission">
+        <input [(ngModel)]="newVehicle.price" name="price" type="number" placeholder="Price">
+      </div>
+      <button type="submit" class="btn-primary">Create Vehicle</button>
+    </form>
+  </div>
+
+  <!-- Vehicle List -->
+  <div class="table-section">
+    <h3>Vehicles List</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>VIN</th>
+          <th>Make</th>
+          <th>Model</th>
+          <th>Year</th>
+          <th>Color</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let vehicle of vehicles">
+          <td>{{ vehicle.vin }}</td>
+          <td>{{ vehicle.make }}</td>
+          <td>{{ vehicle.model }}</td>
+          <td>{{ vehicle.year }}</td>
+          <td>{{ vehicle.color }}</td>
+          <td>{{ vehicle.status }}</td>
+          <td>
+            <button (click)="editVehicle(vehicle)" class="btn-edit">Edit</button>
+            <button (click)="deleteVehicle(vehicle.id!)" class="btn-delete">Delete</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Edit Vehicle Modal -->
+  <div class="modal" *ngIf="isEditing && selectedVehicle">
+    <div class="modal-content">
+      <h3>Edit Vehicle</h3>
+      <form (ngSubmit)="updateVehicle()">
+        <div class="form-grid">
+          <input [(ngModel)]="selectedVehicle.vin" name="vin" placeholder="VIN" required>
+          <input [(ngModel)]="selectedVehicle.make" name="make" placeholder="Make" required>
+          <input [(ngModel)]="selectedVehicle.model" name="model" placeholder="Model" required>
+          <input [(ngModel)]="selectedVehicle.year" name="year" type="number" placeholder="Year" required>
+          <input [(ngModel)]="selectedVehicle.color" name="color" placeholder="Color" required>
+          <input [(ngModel)]="selectedVehicle.type" name="type" placeholder="Type" required>
+          <input [(ngModel)]="selectedVehicle.engineType" name="engineType" placeholder="Engine Type">
+          <input [(ngModel)]="selectedVehicle.transmission" name="transmission" placeholder="Transmission">
+          <input [(ngModel)]="selectedVehicle.price" name="price" type="number" placeholder="Price">
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Update</button>
+          <button type="button" (click)="cancelEdit()" class="btn-secondary">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
